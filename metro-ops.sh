@@ -7,6 +7,7 @@ DB_FILE="metro.db"
 declare -A TRANSFERS
 TRANSFERS["M3"]="Eroilor 1 (M1/3)"
 TRANSFERS["M5"]="Eroilor 2 (M5),Eroilor 1 (M1/3)"
+TRANSFERS["M2"]="Piața Unirii 2 (M2),Piața Unirii 1 (M1/3)"
 
 # Function to determine the line of a station
 get_station_line() {
@@ -142,9 +143,12 @@ list_trips() {
         return
       fi
 
+      echo
       echo "Itinerary:"
+      echo "---------------------------"
       echo "1. From $SOURCE_STATION to $FIRST_TRANSFER:"
       display_trip "$FIRST_TRIP"
+      echo
       echo "2. From $SECOND_TRANSFER to Gara de Nord:"
       display_trip "$SECOND_TRIP"
 
@@ -171,9 +175,12 @@ list_trips() {
         return
       fi
 
+      echo
       echo "Itinerary:"
+      echo "-------------------------------------"
       echo "1. From $SOURCE_STATION to $TRANSFER:"
       display_trip "$FIRST_TRIP"
+      echo
       echo "2. From $TRANSFER to Gara de Nord:"
       display_trip "$SECOND_TRIP"
     fi
