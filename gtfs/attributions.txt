@@ -1,0 +1,8 @@
+organization_name,is_authority,is_producer,is_operator,attribution_url,attribution_email,attribution_phone,agency_id
+FlashWeb IT,0,1,0,https://flash-its.eu/?utm_source=gmaps,admin@flash-its.eu,,
+ADTPBI,1,0,0,https://tpbi.ro/?utm_source=gmaps,office@tpbi.ro,0371502979,
+STB SA,0,0,1,http://stbsa.ro/?utm_source=gmaps,contact@stbsa.ro,0213110595,1
+METROREX SA,0,0,1,http://www.metrorex.ro/?utm_source=gmaps,contact@metrorex.ro,0213193601,2
+STCM,0,0,1,https://stcm.ro/?utm_source=gmaps,office@stcm.ro,0786601271,PV2
+STV SA,0,0,1,https://www.stvsa.ro/?utm_source=gmaps,office@stvsa.ro,0314369921,PV1
+REGIO SERV TRANSPORT,0,0,1,https://regioserv.ro/?utm_source=gmaps,office@regioserv.ro,0759032112,PV9

@@ -1,0 +1,6 @@
+fare_id,price,currency_type,payment_method,transfers,agency_id,transfer_duration
+F1,3,RON,1,,2,
+F2,3,RON,0,,1,5400
+F3,3,RON,0,,PV1,5400
+F4,3,RON,0,,PV2,5400
+F5,3,RON,0,,PV9,5400
