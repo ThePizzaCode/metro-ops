@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # SQLite database file
-DB_FILE="metro.db"
+DB_FILE="../metro-ops/metro.db"
 
 # Hardcoded transfer points
 declare -A TRANSFERS
@@ -20,7 +20,7 @@ FROM routes r
 JOIN trips t ON r.route_id = t.route_id
 JOIN stop_times st ON t.trip_id = st.trip_id
 JOIN stops s ON st.stop_id = s.stop_id
-WHERE s.stop_name = "$station"
+WHERE s.stop_name = '$station'
   AND r.agency_id = 2;  -- Only agency 2 (subways)
 EOF
 }
@@ -48,12 +48,12 @@ JOIN stop_times st1 ON t.trip_id  = st1.trip_id
 JOIN stop_times st2 ON t.trip_id  = st2.trip_id
 JOIN stops s1    ON st1.stop_id   = s1.stop_id
 JOIN stops s2    ON st2.stop_id   = s2.stop_id
-WHERE s1.stop_name = "$source_station"
-  AND s2.stop_name = "$destination_station"
+WHERE s1.stop_id = '$source_station'
+  AND s2.stop_name = '$destination_station'
   AND st1.stop_sequence < st2.stop_sequence
   -- If departure_time is missing or later than current_time, consider it valid
   AND (
-    st1.departure_time > "$current_time"
+    st1.departure_time > '$current_time'
     OR st1.departure_time IS NULL
     OR st1.departure_time = ''
   )
@@ -90,8 +90,7 @@ display_trip() {
 }
 
 list_trips() {
-  echo "Enter the source station:"
-  read SOURCE_STATION
+  SOURCE_STATION=$1 
 
   # Determine the line of the source station
   LINE=$(get_station_line "$SOURCE_STATION" | head -n 1)
@@ -187,22 +186,44 @@ list_trips() {
   fi
 }
 
-# Main menu
-while true; do
-  echo "Choose an option:"
-  echo "1) Find routes to Gara de Nord"
-  echo "2) Exit"
-  read CHOICE
-  case $CHOICE in
-    1)
-      list_trips
-      ;;
-    2)
-      echo "Exiting. Goodbye!"
-      exit 0
-      ;;
-    *)
-      echo "Invalid choice. Please try again."
-      ;;
-  esac
-done
+search_stop_name_similar() {
+    stop_name="$1"
+    
+    sqlite3 "$DB_FILE" <<EOF
+.headers off
+.mode csv
+SELECT DISTINCT stops.stop_name
+FROM stops
+JOIN stop_times ON stops.stop_id = stop_times.stop_id
+JOIN trips ON stop_times.trip_id = trips.trip_id
+WHERE trips.trip_id LIKE 'mrex%' AND stops.stop_name LIKE '%$stop_name%' AND (
+  stops.stop_id LIKE '%r' OR stops.stop_id LIKE '%t' OR stops.stop_id LIKE '%a'
+);
+    
+EOF
+}
+
+handle_request() {
+    IFS=, read -r -a request <<< "$1"
+    
+    endpoint=${request[0]}
+
+    case $endpoint in
+        route)
+          list_trips ${request[1]} 
+          ;;
+
+        search_stop)
+          search_stop_name_similar ${request[1]} 
+          # sqlite3 "$DB_PATH" ".tables"
+          ;;
+
+        *)
+            echo $endpoint 
+            ;;
+    esac
+
+    echo DONE
+}
+
+handle_request "$1"
