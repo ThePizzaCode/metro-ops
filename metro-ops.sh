@@ -48,19 +48,20 @@ JOIN stop_times st1 ON t.trip_id  = st1.trip_id
 JOIN stop_times st2 ON t.trip_id  = st2.trip_id
 JOIN stops s1    ON st1.stop_id   = s1.stop_id
 JOIN stops s2    ON st2.stop_id   = s2.stop_id
-WHERE s1.stop_id = '$source_station'
+WHERE s1.stop_name = '$source_station'
   AND s2.stop_name = '$destination_station'
   AND st1.stop_sequence < st2.stop_sequence
   -- If departure_time is missing or later than current_time, consider it valid
   AND (
     st1.departure_time > '$current_time'
     OR st1.departure_time IS NULL
-    OR st1.departure_time = ''
+    
   )
   AND r.agency_id = 2  -- Only agency 2 (subways)
 ORDER BY COALESCE(st1.departure_time, st2.arrival_time)
 LIMIT 1;
 EOF
+# OR st1.departure_time = ''
 }
 
 # Function to display a trip and return its arrival time (or current time if missing)
@@ -73,13 +74,15 @@ display_trip() {
 
   IFS='|' read -r trip_id head_sign route departure_time arrival_time source_station destination_station <<< "$trip_info"
 
-  echo "Trip ID: $trip_id"
-  echo "Head Sign: $head_sign"
-  echo "Route: $route"
-  echo "Departure Time: $departure_time"
-  echo "Arrival Time: $arrival_time"
-  echo "From: $source_station"
-  echo "To: $destination_station"
+  # echo "Trip ID: $trip_id"
+  # echo "Head Sign: $head_sign"
+  # echo "Route: $route"
+  # echo "Departure Time: $departure_time"
+  # echo "Arrival Time: $arrival_time"
+  # echo "From: $source_station"
+  # echo "To: $destination_station"
+
+  echo TRIP,$trip_id,$head_sign,$route,$departure_time,$arrival_time,$source_station,$destination_station
 
   # Return the arrival time or current time if arrival time is "N/A"
   if [[ "$arrival_time" == "N/A" ]]; then
@@ -95,7 +98,7 @@ list_trips() {
   # Determine the line of the source station
   LINE=$(get_station_line "$SOURCE_STATION" | head -n 1)
   if [[ -z "$LINE" ]]; then
-    echo "Error: Could not determine the line for '$SOURCE_STATION'."
+    echo "error,Could not determine the line for '$SOURCE_STATION'."
     return
   fi
 
@@ -106,14 +109,13 @@ list_trips() {
       DESTINATION="Gara de Nord 2 (M4)"
     fi
 
-    echo "Finding direct routes from '$SOURCE_STATION' to $DESTINATION..."
     TRIP=$(find_first_trip "$SOURCE_STATION" "$DESTINATION" "$(date +"%H:%M:%S")")
     display_trip "$TRIP"
   else
     # Otherwise, look up the TRANSFERS array to see how many transfers
     TRANSFER=${TRANSFERS["$LINE"]}
     if [[ -z "$TRANSFER" ]]; then
-      echo "Error: No transfer defined for line '$LINE'."
+      echo "error,No transfer defined for line '$LINE'."
       return
     fi
 
@@ -121,7 +123,6 @@ list_trips() {
     if [[ "$TRANSFER" == *","* ]]; then
       IFS=',' read -r FIRST_TRANSFER SECOND_TRANSFER <<< "$TRANSFER"
 
-      echo "Finding routes from '$SOURCE_STATION' to '$FIRST_TRANSFER'..."
       FIRST_TRIP=$(find_first_trip "$SOURCE_STATION" "$FIRST_TRANSFER" "$(date +"%H:%M:%S")")
       ARRIVAL_TIME=$(display_trip "$FIRST_TRIP" | tail -1)
 
@@ -130,30 +131,23 @@ list_trips() {
         ARRIVAL_TIME=$(date +"%H:%M:%S")
       fi
       if [[ -z "$ARRIVAL_TIME" || "$ARRIVAL_TIME" == "No available trip found." ]]; then
-        echo "No available trip from '$SOURCE_STATION' to '$FIRST_TRANSFER'."
+        echo "error,no available trip from '$SOURCE_STATION' to '$FIRST_TRANSFER'."
         return
       fi
 
-      echo "Finding routes from '$SECOND_TRANSFER' to Gara de Nord after $ARRIVAL_TIME..."
       SECOND_TRIP=$(find_first_trip "$SECOND_TRANSFER" "Gara de Nord 1 (M1)" "$ARRIVAL_TIME")
       SECOND_DISPLAY=$(display_trip "$SECOND_TRIP")
       if [[ "$SECOND_DISPLAY" == "No available trip found." ]]; then
-        echo "No available trip from '$SECOND_TRANSFER' to Gara de Nord after $ARRIVAL_TIME."
+        echo "error,no available trip from '$SECOND_TRANSFER' to Gara de Nord after $ARRIVAL_TIME."
         return
       fi
 
-      echo
-      echo "Itinerary:"
-      echo "---------------------------"
-      echo "1. From $SOURCE_STATION to $FIRST_TRANSFER:"
       display_trip "$FIRST_TRIP"
-      echo
-      echo "2. From $SECOND_TRANSFER to Gara de Nord:"
+      echo "TRANSFER"
       display_trip "$SECOND_TRIP"
 
     else
       # Only one transfer
-      echo "Finding routes from '$SOURCE_STATION' to '$TRANSFER'..."
       FIRST_TRIP=$(find_first_trip "$SOURCE_STATION" "$TRANSFER" "$(date +"%H:%M:%S")")
       ARRIVAL_TIME=$(display_trip "$FIRST_TRIP" | tail -1)
 
@@ -162,25 +156,20 @@ list_trips() {
         ARRIVAL_TIME=$(date +"%H:%M:%S")
       fi
       if [[ -z "$ARRIVAL_TIME" || "$ARRIVAL_TIME" == "No available trip found." ]]; then
-        echo "No available trip from '$SOURCE_STATION' to '$TRANSFER'."
+        echo "error,no available trip from '$SOURCE_STATION' to '$TRANSFER'."
         return
       fi
 
-      echo "Finding routes from '$TRANSFER' to Gara de Nord after $ARRIVAL_TIME..."
       SECOND_TRIP=$(find_first_trip "$TRANSFER" "Gara de Nord 1 (M1)" "$ARRIVAL_TIME")
       SECOND_DISPLAY=$(display_trip "$SECOND_TRIP")
       if [[ "$SECOND_DISPLAY" == "No available trip found." ]]; then
-        echo "No available trip from '$TRANSFER' to Gara de Nord after $ARRIVAL_TIME."
+        echo "error,no available trip from '$TRANSFER' to Gara de Nord after $ARRIVAL_TIME."
         return
       fi
 
-      echo
-      echo "Itinerary:"
-      echo "-------------------------------------"
-      echo "1. From $SOURCE_STATION to $TRANSFER:"
+     
       display_trip "$FIRST_TRIP"
-      echo
-      echo "2. From $TRANSFER to Gara de Nord:"
+      echo "TRANSFER"
       display_trip "$SECOND_TRIP"
     fi
   fi
@@ -210,11 +199,11 @@ handle_request() {
 
     case $endpoint in
         route)
-          list_trips ${request[1]} 
+          list_trips "${request[1]}"
           ;;
 
         search_stop)
-          search_stop_name_similar ${request[1]} 
+          search_stop_name_similar "${request[1]}"
           # sqlite3 "$DB_PATH" ".tables"
           ;;
 
